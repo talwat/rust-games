@@ -1,9 +1,13 @@
-use std::{thread, sync::{Arc, Mutex}};
+use std::{
+    sync::{Arc, Mutex},
+    thread,
+};
 
 use console::Term;
 use flappy_bird::{
-    screen::Screen,
-    tile::{BgColor, FgColor, Tile}, game, RENDER_TIME, PIPE_WIDTH, PIPE_GAP, PLAYER_SPAWN_X, TICK_TIME, exit,
+    exit, game,
+    screen::{BgColor, FgColor, Screen, Tile},
+    PIPE_GAP, PIPE_WIDTH, PLAYER_SPAWN_X, RENDER_TIME, TICK_TIME,
 };
 
 fn main() {
@@ -14,12 +18,12 @@ fn main() {
     let game = Arc::new(Mutex::new(game));
 
     term.hide_cursor().unwrap();
-    
+
     // Renders the game every 10 ms.
     let game_mutex = Arc::clone(&game);
     let render_thread = thread::spawn(move || loop {
         thread::sleep(RENDER_TIME);
-        
+
         let game = game_mutex.lock().unwrap();
 
         screen.reset();
@@ -29,13 +33,13 @@ fn main() {
                 pipe.pos_x,
                 0,
                 pipe.pos_x + PIPE_WIDTH,
-                pipe.offset_y-PIPE_GAP,
+                pipe.offset_y - PIPE_GAP,
                 Tile::new(FgColor::Black, BgColor::Green, b'@'),
             );
 
             screen.rectangle(
                 pipe.pos_x,
-                pipe.offset_y+PIPE_GAP,
+                pipe.offset_y + PIPE_GAP,
                 pipe.pos_x + PIPE_WIDTH,
                 screen.height,
                 Tile::new(FgColor::Black, BgColor::Green, b'@'),
@@ -65,7 +69,6 @@ fn main() {
         screen.render(&format!("Score: {}", game.score));
     });
 
-    
     // Gathers input in a seperate thread.
     let game_mutex = Arc::clone(&game);
     let input_thread = thread::spawn(move || loop {
@@ -77,9 +80,7 @@ fn main() {
 
         match key {
             console::Key::ArrowUp => game.flap(),
-            console::Key::Char('q') => {
-                exit("Quit.")
-            }
+            console::Key::Char('q') => exit("Quit."),
             _ => (),
         }
     });

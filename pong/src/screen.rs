@@ -8,6 +8,7 @@ pub enum FgColor {
     Green,
     Yellow,
     Blue,
+    White,
     Default,
 }
 
@@ -17,6 +18,7 @@ pub enum BgColor {
     Green,
     Yellow,
     Blue,
+    White,
     Default,
 }
 
@@ -28,6 +30,7 @@ impl FgColor {
             FgColor::Green => *b"32",
             FgColor::Yellow => *b"33",
             FgColor::Blue => *b"34",
+            FgColor::White => *b"37",
             FgColor::Default => *b"39",
         }
     }
@@ -41,6 +44,7 @@ impl BgColor {
             BgColor::Green => *b"42",
             BgColor::Yellow => *b"43",
             BgColor::Blue => *b"44",
+            BgColor::White => *b"47",
             BgColor::Default => *b"49",
         }
     }
@@ -115,15 +119,7 @@ impl Screen {
 
     // Draws the initial background elements like the sky and ground.
     pub fn initial_draw(&mut self) {
-        self.bg_color(Tile::new(FgColor::Black, BgColor::Blue, b'-'));
-        self.line(
-            self.height - 2,
-            Tile::new(FgColor::Black, BgColor::Yellow, b'='),
-        );
-        self.line(
-            self.height - 1,
-            Tile::new(FgColor::Black, BgColor::Yellow, b'='),
-        );
+        self.bg_color(Tile::new(FgColor::Default, BgColor::Default, b' '));
     }
 
     pub fn render(&self, status: &str) {
