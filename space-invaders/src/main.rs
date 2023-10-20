@@ -1,12 +1,28 @@
-use std::{fs, sync::{Mutex, Arc}, thread, time::Duration};
+use std::{
+    fs,
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
 
 use crossterm::event::KeyCode;
-use invaders::{gfx::{self, screen::{Screen, RGB}, font::Font, input::on_input}, game::{Game, Bullet}};
+use invaders::{
+    game::{Bullet, Game},
+    gfx::{
+        self,
+        font::Font,
+        input::on_input,
+        screen::{Screen, RGB},
+    },
+};
 
 fn main() {
-    let screen = Screen::new(|screen| {
-        screen.bg(RGB(0, 0, 0));
-    }, "Space Invaders!");
+    let screen = Screen::new(
+        |screen| {
+            screen.bg(RGB(0, 0, 0));
+        },
+        "Space Invaders!",
+    );
 
     let game = Arc::new(Mutex::new(Game::init(screen.width, screen.height)));
 
@@ -21,7 +37,13 @@ fn main() {
     let (sender, render) = screen.on_update(move |screen| {
         let game = game_mutex.lock().unwrap();
 
-        screen.text(0, 0, RGB(255, 255, 255), &font, &format!("Score: {}", game.score));
+        screen.text(
+            0,
+            0,
+            RGB(255, 255, 255),
+            &font,
+            &format!("Score: {}", game.score),
+        );
 
         for bullet in &game.bullets {
             screen.set_pixel(bullet.x, bullet.y, RGB(255, 255, 255))
@@ -29,7 +51,14 @@ fn main() {
 
         for invader_row in &game.invaders_group.invaders {
             for invader in invader_row {
-                screen.image(invader.x+game.invaders_group.x, invader.y+game.invaders_group.y, &invader_sprite, false, false, false)
+                screen.image(
+                    invader.x + game.invaders_group.x,
+                    invader.y + game.invaders_group.y,
+                    &invader_sprite,
+                    false,
+                    false,
+                    false,
+                )
             }
         }
 
@@ -44,10 +73,10 @@ fn main() {
             KeyCode::Left => game.x -= 1,
             KeyCode::Enter => {
                 let x = game.x + 8;
-                
+
                 game.bullets.push(Bullet::new(x, bottom + 4))
-            },
-            _ => ()
+            }
+            _ => (),
         };
     });
 

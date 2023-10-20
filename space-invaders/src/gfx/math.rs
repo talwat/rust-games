@@ -7,7 +7,7 @@ pub fn bresenham(x1: usize, y1: usize, x2: usize, y2: usize) -> Vec<(usize, usiz
     let mut x2 = x2 as i32;
     let mut y2 = y2 as i32;
 
-    let is_steep = (y2-y1).abs() > (x2-x1).abs();
+    let is_steep = (y2 - y1).abs() > (x2 - x1).abs();
     if is_steep {
         std::mem::swap(&mut x1, &mut y1);
         std::mem::swap(&mut x2, &mut y2);
@@ -16,7 +16,7 @@ pub fn bresenham(x1: usize, y1: usize, x2: usize, y2: usize) -> Vec<(usize, usiz
     let mut reversed = false;
     if x1 > x2 {
         std::mem::swap(&mut x1, &mut x2);
-        std::mem::swap(&mut y1, &mut y2);   
+        std::mem::swap(&mut y1, &mut y2);
         reversed = true;
     }
 
@@ -30,7 +30,7 @@ pub fn bresenham(x1: usize, y1: usize, x2: usize, y2: usize) -> Vec<(usize, usiz
     } else {
         ystep = -1;
     }
-    for x in x1..(x2+1) {
+    for x in x1..(x2 + 1) {
         if is_steep {
             points.push((y as usize, x as usize));
         } else {
@@ -44,9 +44,9 @@ pub fn bresenham(x1: usize, y1: usize, x2: usize, y2: usize) -> Vec<(usize, usiz
     }
 
     if reversed {
-        for i in 0..(points.len()/2) {
-            let end = points.len()-1;
-            points.swap(i, end-i);
+        for i in 0..(points.len() / 2) {
+            let end = points.len() - 1;
+            points.swap(i, end - i);
         }
     }
     points

@@ -2,7 +2,9 @@ use std::thread::{self, JoinHandle};
 
 use crossterm::event::KeyCode;
 
-pub fn on_input(mut press: impl FnMut(&crossterm::event::KeyEvent) + 'static + std::marker::Send) -> JoinHandle<()> {
+pub fn on_input(
+    mut press: impl FnMut(&crossterm::event::KeyEvent) + 'static + std::marker::Send,
+) -> JoinHandle<()> {
     thread::spawn(move || loop {
         let event = crossterm::event::read().unwrap();
 

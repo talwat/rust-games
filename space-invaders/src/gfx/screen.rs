@@ -70,7 +70,7 @@ impl Screen {
 
         screen.initial = screen.data.clone();
 
-        return screen;
+        screen
     }
 
     /// Runs `action` every single frame.
@@ -138,7 +138,7 @@ impl Screen {
 
     /// Renders some text.
     pub fn text(&mut self, x: usize, y: usize, color: RGB, font: &font::Font, text: &str) {
-        for (i, character) in text.chars().into_iter().enumerate() {
+        for (i, character) in text.chars().enumerate() {
             let character = font.get_char(character.to_ascii_lowercase());
 
             for (y1, row) in character.iter().enumerate() {

@@ -1,20 +1,22 @@
 //! Deals With the... psf2 format??? Jeez, this is really random.
 //! The psfu format is what's used in the linux tty.
 //! You can find the built in psf2 fonts in /usr/share/kbd/consolefonts.
-//! 
+//!
 //! This doesn't support the original psf, and currently doesn't support glyphs that aren't 8px wide.
 
 use std::fmt;
 
 #[derive(Debug, Clone)]
 pub enum FontError {
-    IncorrectHeader
+    IncorrectHeader,
 }
 
 impl fmt::Display for FontError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            FontError::IncorrectHeader => write!(fmt, "header magic does not match, is this a psf2 font?"),
+            FontError::IncorrectHeader => {
+                write!(fmt, "header magic does not match, is this a psf2 font?")
+            }
         }
     }
 }
@@ -44,15 +46,18 @@ impl Font {
         let mut result: Vec<Vec<u8>> = Vec::with_capacity(self.header.glyph_size as usize);
 
         let from = self.header.glyph_size * (char);
-        let to = self.header.glyph_size * (char+1);
+        let to = self.header.glyph_size * (char + 1);
 
-        for (i, byte) in self.char_data[from as usize..to as usize].iter().enumerate() {
+        for (i, byte) in self.char_data[from as usize..to as usize]
+            .iter()
+            .enumerate()
+        {
             if byte == &0 {
                 result.push(Vec::with_capacity(0));
 
                 continue;
             }
-            
+
             result.push(Vec::with_capacity(8));
 
             for j in 0..8 {
@@ -89,7 +94,7 @@ impl Font {
 }
 
 fn as_u32_le(array: &[u8]) -> u32 {
-    ((array[0] as u32) << 0)
+    (array[0] as u32)
         + ((array[1] as u32) << 8)
         + ((array[2] as u32) << 16)
         + ((array[3] as u32) << 24)

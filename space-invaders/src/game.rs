@@ -13,7 +13,9 @@ impl Bullet {
 
     pub fn new(x: usize, y: usize) -> Bullet {
         Bullet {
-            x, y, delete: false
+            x,
+            y,
+            delete: false,
         }
     }
 }
@@ -26,7 +28,7 @@ pub struct Invader {
 #[derive(PartialEq)]
 pub enum InvaderDirection {
     Left,
-    Right
+    Right,
 }
 
 pub struct InvadersGroup {
@@ -53,10 +55,10 @@ impl Game {
     pub fn init(width: usize, height: usize) -> Game {
         let mut invaders = Vec::new();
 
-        for (i, y) in (0..height/3).into_iter().step_by(10).enumerate() {
+        for (i, y) in (0..height / 3).step_by(10).enumerate() {
             invaders.push(Vec::new());
 
-            for x in (0..width-(14*4)).into_iter().step_by(14) {
+            for x in (0..width - (14 * 4)).step_by(14) {
                 if width - x <= 14 {
                     break;
                 }
@@ -69,7 +71,13 @@ impl Game {
         let game = Game {
             x: 0,
             bullets: Vec::new(),
-            invaders_group: InvadersGroup { invaders, x: 0, y: 0, width: invaders_width, direction: InvaderDirection::Right},
+            invaders_group: InvadersGroup {
+                invaders,
+                x: 0,
+                y: 0,
+                width: invaders_width,
+                direction: InvaderDirection::Right,
+            },
             invader_move_timer: TICKS_TO_MOVE_INVADERS,
             score: 0,
             width,
@@ -84,7 +92,7 @@ impl Game {
                 continue;
             }
 
-            if self.bullets[i].y <= 0 || self.bullets[i].delete {
+            if self.bullets[i].y == 0 || self.bullets[i].delete {
                 self.bullets.remove(i);
             } else {
                 self.bullets[i].y -= 1;
@@ -99,29 +107,31 @@ impl Game {
 
                 for bullet in &mut self.bullets {
                     if !collided {
-                        collided = (bullet.x >= invader.x + invader_group_x && bullet.x <= invader.x + invader_group_x + 12) && (bullet.y >= invader.y && bullet.y <= invader.y + 8);
-                        
+                        collided = (bullet.x >= invader.x + invader_group_x
+                            && bullet.x <= invader.x + invader_group_x + 12)
+                            && (bullet.y >= invader.y && bullet.y <= invader.y + 8);
+
                         if collided {
                             bullet.delete = true;
-                            
+
                             self.score += 1;
                         }
                         break;
                     }
                 }
-            
+
                 !collided
             });
         }
 
         if self.invader_move_timer > 0 {
             self.invader_move_timer -= 1;
-            
+
             return;
         } else {
             self.invader_move_timer = TICKS_TO_MOVE_INVADERS;
         }
-        
+
         if self.invaders_group.direction == InvaderDirection::Right {
             self.invaders_group.x += 1;
 
