@@ -139,7 +139,7 @@ impl Screen {
     /// Renders some text.
     pub fn text(&mut self, x: usize, y: usize, color: RGB, font: &font::Font, text: &str) {
         for (i, character) in text.chars().enumerate() {
-            let character = font.get_char(character.to_ascii_lowercase());
+            let character = font.get_char(character);
 
             for (y1, row) in character.iter().enumerate() {
                 for (x1, pix) in row.iter().enumerate() {
