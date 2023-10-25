@@ -98,7 +98,7 @@ fn main() {
                 screen.image(
                     invader.transform.x + game.invaders_group.x,
                     invader.transform.y + game.invaders_group.y,
-                    &sprite,
+                    sprite,
                     false,
                     false,
                     false,

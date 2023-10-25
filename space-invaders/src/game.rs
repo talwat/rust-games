@@ -175,7 +175,7 @@ impl Game {
             self.state = StateMachine::Loss;
 
             return;
-        } else if self.invaders_group.invaders.len() == 0 {
+        } else if self.invaders_group.invaders.is_empty() {
             self.state = StateMachine::Win;
 
             return;
@@ -214,7 +214,7 @@ impl Game {
         });
 
         self.invaders_group.invaders.retain_mut(|row| {
-            if row.len() == 0 {
+            if row.is_empty() {
                 return false;
             }
 

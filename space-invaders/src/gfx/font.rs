@@ -61,7 +61,7 @@ impl Font {
             result.push(Vec::with_capacity(8));
 
             for j in 0..8 {
-                let bit = (byte >> 7 - j) & 1;
+                let bit = (byte >> (7 - j)) & 1;
 
                 result[i].push(bit);
             }
