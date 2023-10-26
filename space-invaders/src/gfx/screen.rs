@@ -248,6 +248,10 @@ impl Screen {
         }
 
         for (y1, row) in final_image.iter().enumerate() {
+            if y + y1 >= self.height {
+                continue;
+            }
+
             let mut final_row = row.clone();
 
             if mirror_vertical {
@@ -255,6 +259,10 @@ impl Screen {
             }
 
             for (x1, pixel) in final_row.iter().enumerate() {
+                if x + x1 >= self.width {
+                    continue;
+                }
+
                 if let Some(pixel) = pixel {
                     if rotate {
                         self.set_pixel(x + y1, y + x1, *pixel);

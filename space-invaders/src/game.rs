@@ -3,13 +3,14 @@ use std::io;
 use rand::Rng;
 
 const TICKS_TO_MOVE_INVADERS: usize = 12;
+const INVADER_PADDING: usize = 8;
 
 /// The different states the game can be in.
 #[derive(PartialEq)]
 pub enum StateMachine {
     Play,
     Win,
-    Loss
+    Loss,
 }
 
 /// Both friendly and enemy bullets, because they share a bit in common with eachother.
@@ -21,11 +22,12 @@ pub struct Bullet {
 
 /// Defines a position and size.
 /// Only use this for objects intended to be collided with. You don't need to use this on every single object/struct.
+#[derive(Clone, Copy)]
 pub struct Transform {
     pub x: usize,
     pub y: usize,
     pub width: usize,
-    pub height: usize
+    pub height: usize,
 }
 
 impl Transform {
@@ -61,7 +63,12 @@ impl Bullet {
     /// Creates a new bullet.
     pub fn new(x: usize, y: usize, invader: bool) -> Bullet {
         Bullet {
-            transform: Transform { x, y, width: 1, height: 1 },
+            transform: Transform {
+                x,
+                y,
+                width: 1,
+                height: 1,
+            },
             invader,
             delete: false,
         }
@@ -92,6 +99,24 @@ pub struct InvadersGroup {
     pub y: usize,
 }
 
+/// An explosion effect.
+pub struct Explosion {
+    pub x: usize,
+    pub y: usize,
+    pub stage: usize,
+    pub timer: u8,
+}
+
+#[derive(Clone, Copy)]
+pub struct Wall {
+    pub transform: Transform,
+    pub health: u8,
+}
+/// Special Visual Effects.
+/// This may be edited by the render thread when said effects are no longer needed.
+pub struct Effects {
+    pub explosions: Vec<Explosion>,
+}
 /// The game struct with all the information.
 /// This struct is shared across the input, render, and game threads.
 pub struct Game {
@@ -101,6 +126,8 @@ pub struct Game {
     pub score: u64,
     pub lives: u8,
     pub state: StateMachine,
+    pub effects: Effects,
+    pub walls: [Wall; 4],
 
     pub invader_move_timer: usize,
 
@@ -130,29 +157,50 @@ impl Game {
                     score = 10
                 }
 
-                invaders[i].push(Invader { transform: Transform {
-                    x,
-                    y: i*10,
-                    height: 8,
-                    width: 10,
-                }, score })
+                invaders[i].push(Invader {
+                    transform: Transform {
+                        x,
+                        y: i * 10,
+                        height: 8,
+                        width: 10,
+                    },
+                    score,
+                })
             }
         }
 
         let invaders_width = invaders[0].len() * 14;
+
+        let mut walls = [Wall {
+            transform: Transform {
+                x: 0,
+                y: height - 32,
+                width: 26,
+                height: 12,
+            },
+            health: 4,
+        }; 4];
+
+        for (i, wall) in walls.iter_mut().enumerate() {
+            wall.transform.x = ((width / 4) * (i)) + (wall.transform.width / 4);
+        }
 
         let game: Game = Game {
             state: StateMachine::Play,
             ship: Transform {
                 x: 0,
                 y: height - 16,
-                width: 16,
-                height: 16,
+                width: 9,
+                height: 10,
             },
             bullets: Vec::new(),
+            effects: Effects {
+                explosions: Vec::new(),
+            },
+            walls,
             invaders_group: InvadersGroup {
                 invaders,
-                x: 0,
+                x: INVADER_PADDING,
                 y: 12,
                 width: invaders_width,
                 direction: InvaderDirection::Right,
@@ -182,24 +230,39 @@ impl Game {
         }
 
         for i in 0..self.bullets.len() {
-            let bullet = &self.bullets[i];
-
             if i >= self.bullets.len() {
                 continue;
             }
 
-            if bullet.transform.y == 0 || bullet.transform.y >= self.height-4 {
+            if self.bullets[i].transform.y == 0 || self.bullets[i].transform.y >= self.height - 4 {
                 self.bullets[i].delete();
 
                 continue;
             }
-            
-            if bullet.invader {
-                if self.ship.collided(&bullet.transform, 0, 0) {
+
+            for wall in &mut self.walls {
+                if !wall.transform.collided(&self.bullets[i].transform, 0, 0) || wall.health == 0 {
+                    continue;
+                }
+
+                wall.health -= 1;
+
+                self.bullets[i].delete();
+
+                self.effects.explosions.push(Explosion {
+                    x: self.bullets[i].transform.x,
+                    y: self.bullets[i].transform.y,
+                    stage: 3,
+                    timer: 8,
+                });
+            }
+
+            if self.bullets[i].invader {
+                if self.ship.collided(&self.bullets[i].transform, 0, 0) {
                     crossterm::execute!(io::stdout(), crossterm::style::Print("\x07")).unwrap();
                     self.lives -= 1;
                     self.bullets[i].delete();
-    
+
                     continue;
                 }
 
@@ -209,9 +272,7 @@ impl Game {
             }
         }
 
-        self.bullets.retain(|bullet| {
-            !bullet.delete
-        });
+        self.bullets.retain(|bullet| !bullet.delete);
 
         self.invaders_group.invaders.retain_mut(|row| {
             if row.is_empty() {
@@ -223,22 +284,32 @@ impl Game {
                     if bullet.invader {
                         continue;
                     }
-    
-                    if invader.transform.collided(&bullet.transform, self.invaders_group.x, self.invaders_group.y) {
-                        bullet.delete = true;
-    
+
+                    if invader.transform.collided(
+                        &bullet.transform,
+                        self.invaders_group.x,
+                        self.invaders_group.y,
+                    ) {
+                        bullet.delete();
+
+                        self.effects.explosions.push(Explosion {
+                            x: bullet.transform.x,
+                            y: bullet.transform.y,
+                            stage: 3,
+                            timer: 8,
+                        });
+
                         self.score += invader.score as u64;
-    
+
                         return false;
                     }
                 }
-    
+
                 return true;
             });
 
             return true;
         });
-
 
         if self.invader_move_timer > 0 {
             self.invader_move_timer -= 1;
@@ -249,27 +320,31 @@ impl Game {
         }
 
         let mut rand = rand::thread_rng();
-        
+
         if rand.gen_range(0..5) == 0 {
             let i = rand.gen_range(0..self.invaders_group.invaders.len());
             let j = rand.gen_range(0..self.invaders_group.invaders[i].len());
-    
+
             let shooter = &self.invaders_group.invaders[i][j];
 
-            self.bullets.push(Bullet::new(shooter.transform.x+6+self.invaders_group.x, shooter.transform.y+5+self.invaders_group.y, true));
+            self.bullets.push(Bullet::new(
+                shooter.transform.x + 6 + self.invaders_group.x,
+                shooter.transform.y + 5 + self.invaders_group.y,
+                true,
+            ));
         }
 
         if self.invaders_group.direction == InvaderDirection::Right {
             self.invaders_group.x += 1;
 
-            if self.invaders_group.x + self.invaders_group.width >= self.width {
+            if self.invaders_group.x + self.invaders_group.width + INVADER_PADDING > self.width {
                 self.invaders_group.y += 4;
                 self.invaders_group.direction = InvaderDirection::Left
             }
         } else {
             self.invaders_group.x -= 1;
 
-            if self.invaders_group.x <= 2 {
+            if self.invaders_group.x - INVADER_PADDING <= 2 {
                 self.invaders_group.y += 4;
                 self.invaders_group.direction = InvaderDirection::Right
             }

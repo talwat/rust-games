@@ -28,36 +28,74 @@ fn main() {
 
     let sprites = Screen::load_image("./art/invaders.png");
     let invader_sprites = [
-        Screen::load_section(&sprites, 3, 4, 14, 12),       // 20
-        Screen::load_section(&sprites, 3, 4+16, 14, 12+16), // 30
-        Screen::load_section(&sprites, 3, 4+32, 14, 12+32), // 10
+        Screen::load_section(&sprites, 3, 4, 14, 12), // 20
+        Screen::load_section(&sprites, 3, 4 + 16, 14, 12 + 16), // 30
+        Screen::load_section(&sprites, 3, 4 + 32, 14, 12 + 32), // 10
+    ];
+    let explosion_sprites = [
+        Screen::load_section(&sprites, 32, 64, 48, 80),
+        Screen::load_section(&sprites, 32, 48, 48, 64),
+        Screen::load_section(&sprites, 32, 32, 48, 48),
+    ];
+    let wall_sprites = [
+        Screen::load_section(&sprites, 51, 20 + 48, 77, 32 + 48),
+        Screen::load_section(&sprites, 51, 20 + 32, 77, 32 + 32),
+        Screen::load_section(&sprites, 51, 20 + 16, 77, 32 + 16),
+        Screen::load_section(&sprites, 51, 20, 77, 32),
     ];
     let invader_bullet = Screen::load_section(&sprites, 37, 21, 41, 28);
-    let ship_sprite = Screen::load_section(&sprites, 64, 0, 80, 16);
+    let ship_sprite = Screen::load_section(&sprites, 68, 4, 77, 14);
     let font = Font::load(&fs::read("./font/font9.psfu").unwrap()).unwrap();
     let font_big = Font::load(&fs::read("./font/font16.psfu").unwrap()).unwrap();
 
-    let mut flip_flop_timer = 8;
+    let mut flip_flop_timer = 16;
 
     let game_mutex = game.clone();
     let (sender, render) = screen.on_update(move |screen| {
-        if flip_flop_timer == 16 {
-            flip_flop_timer = 0
+        if flip_flop_timer == 0 {
+            flip_flop_timer = 16
         } else {
-            flip_flop_timer += 1;
+            flip_flop_timer -= 1;
         }
 
-
-        let game = game_mutex.lock().unwrap();
+        let mut game = game_mutex.lock().unwrap();
 
         if game.state == StateMachine::Win || game.state == StateMachine::Loss {
             let score_text = &format!("Score: {}", game.score);
-            let big_text = if game.state == StateMachine::Win { "You Win! " } else { "You Lose!" };
+            let big_text = if game.state == StateMachine::Win {
+                "You Win! "
+            } else {
+                "You Lose!"
+            };
 
-            screen.text((screen.width-(font_big.header.glyph_width as usize * big_text.len()))/2, (screen.height-font_big.header.glyph_height as usize)/2-16, RGB(255, 255, 255), &font_big, big_text);
-            screen.text((screen.width-(font.header.glyph_width as usize * score_text.len()))/2, (screen.height-font.header.glyph_height as usize)/2, RGB(255, 255, 255), &font, score_text);
-            screen.text((screen.width-(font.header.glyph_width as usize * 7))/2, ((screen.height-font.header.glyph_height as usize)/2) + 8, RGB(255, 255, 255), &font, "Made By");
-            screen.text((screen.width-(font.header.glyph_width as usize * 6))/2, ((screen.height-font.header.glyph_height as usize)/2) + 16, RGB(255, 255, 255), &font, "Talwat");
+            screen.text(
+                (screen.width - (font_big.header.glyph_width as usize * big_text.len())) / 2,
+                (screen.height - font_big.header.glyph_height as usize) / 2 - 16,
+                RGB(255, 255, 255),
+                &font_big,
+                big_text,
+            );
+            screen.text(
+                (screen.width - (font.header.glyph_width as usize * score_text.len())) / 2,
+                (screen.height - font.header.glyph_height as usize) / 2,
+                RGB(255, 255, 255),
+                &font,
+                score_text,
+            );
+            screen.text(
+                (screen.width - (font.header.glyph_width as usize * 7)) / 2,
+                ((screen.height - font.header.glyph_height as usize) / 2) + 8,
+                RGB(255, 255, 255),
+                &font,
+                "Made By",
+            );
+            screen.text(
+                (screen.width - (font.header.glyph_width as usize * 6)) / 2,
+                ((screen.height - font.header.glyph_height as usize) / 2) + 16,
+                RGB(255, 255, 255),
+                &font,
+                "Talwat",
+            );
 
             return;
         }
@@ -72,15 +110,22 @@ fn main() {
 
         screen.text(
             0,
-            screen.height-9,
+            screen.height - 9,
             RGB(255, 255, 255),
             &font,
             &format!("Lives {}", game.lives),
         );
-        
+
         for bullet in &game.bullets {
             if bullet.invader {
-                screen.image(bullet.transform.x-2, bullet.transform.y-3, &invader_bullet, flip_flop_timer >= 8, false, false);
+                screen.image(
+                    bullet.transform.x - 2,
+                    bullet.transform.y - 3,
+                    &invader_bullet,
+                    flip_flop_timer >= 8,
+                    false,
+                    false,
+                );
             } else {
                 screen.set_pixel(bullet.transform.x, bullet.transform.y, RGB(255, 255, 255))
             }
@@ -106,6 +151,39 @@ fn main() {
             }
         }
 
+        for wall in game.walls {
+            if wall.health > 0 {
+                screen.image(
+                    wall.transform.x,
+                    wall.transform.y,
+                    &wall_sprites[wall.health as usize - 1],
+                    false,
+                    false,
+                    false,
+                );
+            }
+        }
+
+        game.effects.explosions.retain_mut(|explosion| {
+            screen.image(
+                explosion.x - 8,
+                explosion.y - 12,
+                &explosion_sprites[explosion.stage - 1],
+                false,
+                false,
+                false,
+            );
+
+            if explosion.timer == 0 {
+                explosion.timer = 8;
+                explosion.stage -= 1;
+            } else {
+                explosion.timer -= 1;
+            }
+
+            explosion.stage != 0
+        });
+
         screen.image(game.ship.x, game.ship.y, &ship_sprite, false, false, false);
     });
 
@@ -116,7 +194,7 @@ fn main() {
             KeyCode::Right => game.ship.x += 2,
             KeyCode::Left => game.ship.x -= 2,
             KeyCode::Enter => {
-                let x = game.ship.x + 8;
+                let x = game.ship.x + 4;
                 let y = game.ship.y + 4;
 
                 game.bullets.push(Bullet::new(x, y, false))
