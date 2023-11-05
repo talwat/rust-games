@@ -234,6 +234,7 @@ version = "0.1.0"
 dependencies = [
  "crossterm",
  "image",
+ "psf-rs",
  "rand",
 ]
 
@@ -376,6 +377,12 @@ name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
+
+[[package]]
+name = "psf-rs"
+version = "2.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c6910e58bd6393a2d4986f52f7a00fd2e8e2b7d11dfa1124e81874607efb47b"
 
 [[package]]
 name = "qoi"

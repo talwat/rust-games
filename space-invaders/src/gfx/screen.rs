@@ -9,10 +9,7 @@ use std::{
 use crossterm::execute;
 use image::GenericImageView;
 
-use super::{
-    font::{self},
-    math,
-};
+use super::math;
 
 #[derive(Copy, Clone, Debug)]
 pub struct RGB(pub u8, pub u8, pub u8);
@@ -94,9 +91,9 @@ impl Screen {
 
                 let now = Instant::now();
 
-                self.render();
                 self.reset();
                 action(&mut self);
+                self.render();
 
                 const TARGET_DELTA: Duration = Duration::from_millis(16);
 
@@ -137,17 +134,29 @@ impl Screen {
     }
 
     /// Renders some text.
-    pub fn text(&mut self, x: usize, y: usize, color: RGB, font: &font::Font, text: &str) {
-        for (i, character) in text.chars().enumerate() {
-            let character = font.get_char(character);
+    pub fn text(&mut self, x: usize, y: usize, color: RGB, font: &psf_rs::Font, text: &str) {
+        let mut line = 0;
+        let mut offset = 0;
 
-            for (y1, row) in character.iter().enumerate() {
-                for (x1, pix) in row.iter().enumerate() {
-                    if pix == &1 {
-                        self.set_pixel(x + x1 + i * 8, y + y1, color)
-                    }
-                }
+        for character in text.chars() {
+            if character == '\n' {
+                line += 1;
+                offset = 0;
+
+                continue;
             }
+
+            let character = font.display_glyph(character, |bit, x1, y1| {
+                if bit == 1 {
+                    self.set_pixel(
+                        x + x1 as usize + offset * 8,
+                        y + y1 as usize + (line * (font.header.glyph_height as usize + 2)),
+                        color,
+                    );
+                }
+            });
+
+            offset += 1;
         }
     }
 
@@ -240,6 +249,7 @@ impl Screen {
         mirror_horizontal: bool,
         mirror_vertical: bool,
         rotate: bool,
+        color: Option<RGB>,
     ) {
         let mut final_image = image.clone();
 
@@ -263,11 +273,14 @@ impl Screen {
                     continue;
                 }
 
-                if let Some(pixel) = pixel {
+                if let Some(mut pixel) = pixel {
+                    if let Some(override_color) = color {
+                        pixel = override_color;
+                    }
                     if rotate {
-                        self.set_pixel(x + y1, y + x1, *pixel);
+                        self.set_pixel(x + y1, y + x1, pixel);
                     } else {
-                        self.set_pixel(x + x1, y + y1, *pixel);
+                        self.set_pixel(x + x1, y + y1, pixel);
                     }
                 }
             }

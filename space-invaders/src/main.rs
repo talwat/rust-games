@@ -1,22 +1,40 @@
 use std::{
     fs,
+    io::{self, Cursor},
     sync::{Arc, Mutex},
     thread,
     time::Duration,
 };
 
-use crossterm::event::KeyCode;
+use crossterm::{event::KeyCode, execute};
 use invaders::{
-    game::{Bullet, Game, StateMachine},
+    game::{Bullet, Game, MenuOption, StateMachine, DEFAULT_MENU},
     gfx::{
         self,
-        font::Font,
         input::on_input,
         screen::{Screen, RGB},
     },
 };
+use psf_rs::Font;
 
 fn main() {
+    execute!(
+        io::stdout(),
+        crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
+    )
+    .unwrap();
+
+    loop {
+        let term = crossterm::terminal::size().unwrap();
+
+        if term.0 >= 148 && term.1 >= 64 {
+            break;
+        } else {
+            execute!(io::stdout(), crossterm::cursor::MoveTo(0, 0)).unwrap();
+            print!("Terminal is too small!")
+        }
+    }
+
     let screen = Screen::new(
         |screen| {
             screen.bg(RGB(0, 0, 0));
@@ -45,8 +63,8 @@ fn main() {
     ];
     let invader_bullet = Screen::load_section(&sprites, 37, 21, 41, 28);
     let ship_sprite = Screen::load_section(&sprites, 68, 4, 77, 14);
-    let font = Font::load(&fs::read("./font/font9.psfu").unwrap()).unwrap();
-    let font_big = Font::load(&fs::read("./font/font16.psfu").unwrap()).unwrap();
+    let font = Font::load(&fs::read("./font/font9.psfu").unwrap());
+    let font_big = Font::load(&fs::read("./font/font16.psfu").unwrap());
 
     let mut flip_flop_timer = 16;
 
@@ -59,6 +77,62 @@ fn main() {
         }
 
         let mut game = game_mutex.lock().unwrap();
+
+        if game.state == StateMachine::Credits {
+            screen.text(
+                4,
+                4,
+                RGB(255, 255, 255),
+                &font,
+                "Made By:
+Talwat
+
+Libraries:
+- crossterm
+- rand
+- image",
+            );
+
+            return;
+        }
+
+        if let StateMachine::Menu(menu) = &game.state {
+            let title = "Space Invaders!";
+            let spacing = (screen.width - (font_big.header.glyph_width as usize * title.len())) / 2;
+
+            screen.text(
+                spacing,
+                (screen.height - font_big.header.glyph_height as usize) / 2 - 32,
+                RGB(255, 255, 255),
+                &font_big,
+                title,
+            );
+
+            for (i, option) in menu.options.iter().enumerate() {
+                screen.text(
+                    spacing,
+                    ((screen.height - font.header.glyph_height as usize) / 2) + (i * 12),
+                    RGB(255, 255, 255),
+                    &font,
+                    option.to_str(),
+                );
+
+                if i == menu.cursor_index {
+                    screen.text(
+                        spacing - 12,
+                        ((screen.height - font.header.glyph_height as usize) / 2) + (i * 12),
+                        RGB(255, 255, 255),
+                        &font,
+                        ">",
+                    );
+                }
+            }
+
+            // TODO: Add menu and shit.
+            // TODO: Also implement changing state from menu, and add constant to be able to go back to the menu.
+
+            return;
+        }
 
         if game.state == StateMachine::Win || game.state == StateMachine::Loss {
             let score_text = &format!("Score: {}", game.score);
@@ -113,7 +187,7 @@ fn main() {
             screen.height - 9,
             RGB(255, 255, 255),
             &font,
-            &format!("Lives {}", game.lives),
+            &format!("Lives {} Timer: {}", game.lives, game.invincible_timer),
         );
 
         for bullet in &game.bullets {
@@ -125,6 +199,7 @@ fn main() {
                     flip_flop_timer >= 8,
                     false,
                     false,
+                    None,
                 );
             } else {
                 screen.set_pixel(bullet.transform.x, bullet.transform.y, RGB(255, 255, 255))
@@ -147,6 +222,7 @@ fn main() {
                     false,
                     false,
                     false,
+                    None,
                 )
             }
         }
@@ -160,6 +236,7 @@ fn main() {
                     false,
                     false,
                     false,
+                    None,
                 );
             }
         }
@@ -172,6 +249,7 @@ fn main() {
                 false,
                 false,
                 false,
+                None,
             );
 
             if explosion.timer == 0 {
@@ -184,22 +262,57 @@ fn main() {
             explosion.stage != 0
         });
 
-        screen.image(game.ship.x, game.ship.y, &ship_sprite, false, false, false);
+        if game.invincible_timer % 2 == 0 {
+            screen.image(
+                game.ship.x,
+                game.ship.y,
+                &ship_sprite,
+                false,
+                false,
+                false,
+                None,
+            );
+        }
     });
 
     let game_mutex = game.clone();
     let input = on_input(move |key| {
         let mut game = game_mutex.lock().unwrap();
-        match key.code {
-            KeyCode::Right => game.ship.x += 2,
-            KeyCode::Left => game.ship.x -= 2,
-            KeyCode::Enter => {
-                let x = game.ship.x + 4;
-                let y = game.ship.y + 4;
+        match &mut game.state {
+            StateMachine::Play => match key.code {
+                KeyCode::Right | KeyCode::Char('d') => game.ship.x += 2,
+                KeyCode::Left | KeyCode::Char('w') => game.ship.x -= 2,
+                KeyCode::Enter | KeyCode::Char(' ') => {
+                    let x = game.ship.x + 4;
+                    let y = game.ship.y + 4;
 
-                game.bullets.push(Bullet::new(x, y, false))
-            }
-            _ => (),
+                    game.bullets.push(Bullet::new(x, y, false))
+                }
+                _ => (),
+            },
+            StateMachine::Loss | StateMachine::Win => match key.code {
+                _ => *game = Game::init(game.width, game.height),
+            },
+            StateMachine::Credits => match key.code {
+                _ => game.state = StateMachine::Menu(DEFAULT_MENU),
+            },
+            StateMachine::Menu(menu) => match key.code {
+                KeyCode::Up => {
+                    if menu.cursor_index > 0 {
+                        menu.cursor_index -= 1;
+                    }
+                }
+                KeyCode::Down => {
+                    if menu.cursor_index < menu.options.len() - 1 {
+                        menu.cursor_index += 1;
+                    }
+                }
+                KeyCode::Enter => match menu.options[menu.cursor_index] {
+                    invaders::game::MenuOption::Play => game.state = StateMachine::Play,
+                    invaders::game::MenuOption::Credits => game.state = StateMachine::Credits,
+                },
+                _ => (),
+            },
         };
     });
 

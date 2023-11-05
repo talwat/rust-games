@@ -4,6 +4,31 @@ use rand::Rng;
 
 const TICKS_TO_MOVE_INVADERS: usize = 12;
 const INVADER_PADDING: usize = 8;
+const TICKS_TO_INVINCIBILITY: usize = 8;
+pub const DEFAULT_MENU: MenuData = MenuData {
+    options: [MenuOption::Play, MenuOption::Credits],
+    cursor_index: 0,
+};
+
+#[derive(PartialEq)]
+pub enum MenuOption {
+    Play,
+    Credits,
+}
+
+impl MenuOption {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            MenuOption::Play => "Play",
+            MenuOption::Credits => "Credits",
+        }
+    }
+}
+#[derive(PartialEq)]
+pub struct MenuData {
+    pub options: [MenuOption; 2],
+    pub cursor_index: usize,
+}
 
 /// The different states the game can be in.
 #[derive(PartialEq)]
@@ -11,6 +36,8 @@ pub enum StateMachine {
     Play,
     Win,
     Loss,
+    Menu(MenuData),
+    Credits,
 }
 
 /// Both friendly and enemy bullets, because they share a bit in common with eachother.
@@ -128,6 +155,8 @@ pub struct Game {
     pub state: StateMachine,
     pub effects: Effects,
     pub walls: [Wall; 4],
+    pub invincible: bool,
+    pub invincible_timer: usize,
 
     pub invader_move_timer: usize,
 
@@ -186,7 +215,7 @@ impl Game {
         }
 
         let game: Game = Game {
-            state: StateMachine::Play,
+            state: StateMachine::Menu(DEFAULT_MENU),
             ship: Transform {
                 x: 0,
                 y: height - 16,
@@ -198,6 +227,8 @@ impl Game {
                 explosions: Vec::new(),
             },
             walls,
+            invincible: false,
+            invincible_timer: TICKS_TO_INVINCIBILITY,
             invaders_group: InvadersGroup {
                 invaders,
                 x: INVADER_PADDING,
@@ -258,10 +289,12 @@ impl Game {
             }
 
             if self.bullets[i].invader {
-                if self.ship.collided(&self.bullets[i].transform, 0, 0) {
+                if self.ship.collided(&self.bullets[i].transform, 0, 0) && !self.invincible {
                     crossterm::execute!(io::stdout(), crossterm::style::Print("\x07")).unwrap();
                     self.lives -= 1;
                     self.bullets[i].delete();
+
+                    self.invincible = true;
 
                     continue;
                 }
@@ -317,6 +350,15 @@ impl Game {
             return;
         } else {
             self.invader_move_timer = TICKS_TO_MOVE_INVADERS;
+        }
+
+        if self.invincible {
+            if self.invincible_timer > 0 {
+                self.invincible_timer -= 1;
+            } else {
+                self.invincible_timer = TICKS_TO_INVINCIBILITY;
+                self.invincible = false;
+            }
         }
 
         let mut rand = rand::thread_rng();
