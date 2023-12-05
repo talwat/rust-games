@@ -1,6 +1,6 @@
 use std::{
     fs,
-    io::{self, Cursor},
+    io,
     sync::{Arc, Mutex},
     thread,
     time::Duration,
@@ -8,7 +8,7 @@ use std::{
 
 use crossterm::{event::KeyCode, execute};
 use invaders::{
-    game::{Bullet, Game, MenuOption, StateMachine, DEFAULT_MENU},
+    game::{Bullet, Game, StateMachine, DEFAULT_MENU},
     gfx::{
         self,
         input::on_input,

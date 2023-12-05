@@ -146,7 +146,7 @@ impl Screen {
                 continue;
             }
 
-            let character = font.display_glyph(character, |bit, x1, y1| {
+            font.display_glyph(character, |bit, x1, y1| {
                 if bit == 1 {
                     self.set_pixel(
                         x + x1 as usize + offset * 8,
