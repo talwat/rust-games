@@ -3,7 +3,7 @@ use std::{
     io,
     sync::{Arc, Mutex},
     thread,
-    time::Duration,
+    time::Duration, process::exit,
 };
 
 use crossterm::{event::KeyCode, execute};
@@ -24,15 +24,12 @@ fn main() {
     )
     .unwrap();
 
-    loop {
-        let term = crossterm::terminal::size().unwrap();
+    let term = crossterm::terminal::size().unwrap();
 
-        if term.0 >= 148 && term.1 >= 64 {
-            break;
-        } else {
-            execute!(io::stdout(), crossterm::cursor::MoveTo(0, 0)).unwrap();
-            print!("Terminal is too small!")
-        }
+    if !(term.0 >= 148 && term.1 >= 64) {
+        print!("Terminal is too small! Current: {}x{}, Needed: 148x64", term.0, term.1);
+
+        exit(1);
     }
 
     let screen = Screen::new(
